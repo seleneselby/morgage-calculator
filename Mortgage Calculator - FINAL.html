@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How much can I borrow?</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+        .calculator-container {
+            background-color: #2c3e50;
+            border: 1px solid #1a252f;
+            border-radius: 10px;
+            padding: 25px;
+            width: 800px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            color: #ecf0f1;
+        }
+        h1 {
+            text-align: center;
+            color: #3498db;
+            margin-bottom: 20px;
+        }
+        .container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .applicant {
+            width: 48%;
+            background-color: #34495e;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #1a252f;
+        }
+        .applicant h3 {
+            color: #1abc9c;
+            margin-bottom: 10px;
+        }
+        .applicant select, .applicant input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #7f8c8d;
+            border-radius: 4px;
+            background-color: #ecf0f1;
+            color: #2c3e50;
+        }
+        .applicant label {
+            font-weight: bold;
+            color: #ecf0f1;
+        }
+        .deposit {
+            margin-top: 20px;
+        }
+        .deposit label {
+            display: block;
+            text-align: center;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+        .deposit input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #7f8c8d;
+            border-radius: 4px;
+            background-color: #ecf0f1;
+            color: #2c3e50;
+        }
+        .result {
+            font-size: 1.5em;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #3498db;
+            color: #ecf0f1;
+            border-radius: 8px;
+        }
+        .property-value {
+            font-size: 1.2em; /* Increased font size */
+            font-weight: normal;
+            margin-top: 10px;
+            text-align: center;
+            color: #ecf0f1;
+        }
+        .explanation {
+            margin-top: 20px;
+            font-size: 1.1em; /* Increased font size */
+            text-align: center;
+            color: #ecf0f1;
+            display: none; /* Initially hide the explanation */
+        }
+        .explanation b {
+            font-weight: bold;
+        }
+    </style>
+    <script>
+        function showFields(applicant, status) {
+            let section = document.getElementById(applicant + '_fields');
+            section.innerHTML = '';
+
+            if (status === 'employed') {
+                section.innerHTML = `
+                    <label>Annual Income (GBP):</label><input type="number" id="${applicant}_income" oninput="calculateMortgage()" /><br>
+                    <label>Bonus (GBP):</label><input type="number" id="${applicant}_bonus" oninput="calculateMortgage()" /><br>
+                    <label>Overtime (GBP):</label><input type="number" id="${applicant}_overtime" oninput="calculateMortgage()" /><br>
+                    <label>Commission (GBP):</label><input type="number" id="${applicant}_commission" oninput="calculateMortgage()" />
+                `;
+            } else if (status === 'self-employed') {
+                section.innerHTML = `
+                    <label>Trading Style:</label>
+                    <select id="${applicant}_trading_style" onchange="showSelfEmployedFields('${applicant}'); calculateMortgage();">
+                        <option value="">Select</option>
+                        <option value="company_director">Company Director</option>
+                        <option value="contractor">Contractor</option>
+                        <option value="partner">Partner</option>
+                        <option value="sole_trader">Sole Trader</option>
+                    </select>
+                    <div id="${applicant}_self_employed_fields"></div>
+                `;
+            }
+        }
+
+        function showSelfEmployedFields(applicant) {
+            let style = document.getElementById(applicant + '_trading_style').value;
+            let section = document.getElementById(applicant + '_self_employed_fields');
+            section.innerHTML = '';
+
+            if (style === 'company_director') {
+                section.innerHTML = `
+                    <label>Salary and Dividends drawn (GBP):</label><br><br>
+                    <label>in the latest year:</label><input type="number" id="${applicant}_latest_salary" oninput="calculateMortgage()" /><br>
+                    <label>Previous year:</label><input type="number" id="${applicant}_previous_salary" oninput="calculateMortgage()" />
+                `;
+            } else if (style === 'contractor') {
+                section.innerHTML = `
+                    <label>What is your day rate? (GBP):</label><input type="number" id="${applicant}_day_rate" oninput="calculateMortgage()" /><br>
+                    <label>How many days per week do you work?:</label><input type="number" id="${applicant}_days_per_week" oninput="calculateMortgage()" />
+                `;
+            } else if (style === 'partner' || style === 'sole_trader') {
+                section.innerHTML = `
+                    <label>Latest year’s profit (GBP):</label><input type="number" id="${applicant}_latest_profit" oninput="calculateMortgage()" /><br>
+                    <label>Previous year's profit (GBP):</label><input type="number" id="${applicant}_previous_profit" oninput="calculateMortgage()" />
+                `;
+            }
+        }
+
+        function calculateMortgage() {
+            let mortgage1 = calculateApplicantMortgage('applicant1');
+            let mortgage2 = calculateApplicantMortgage('applicant2');
+
+            let totalMortgage = mortgage1 + mortgage2;
+            document.getElementById('total_mortgage').innerText = 'Total Mortgage: ' + totalMortgage.toLocaleString() + ' GBP';
+
+            let deposit = parseFloat(document.getElementById('deposit').value) || 0;
+            let propertyValue = totalMortgage + deposit;
+
+            document.getElementById('property_value').innerText = 'I could buy a property worth up to ' + propertyValue.toLocaleString() + ' GBP';
+
+            // Update explanation with the latest total mortgage value
+            let explanation = `
+                Most lenders would consider letting you borrow ${totalMortgage.toLocaleString()} GBP. However, this figure is just an <b>approximation.</b> The actual amount you are able to borrow could be higher or lower, subject to the lender’s criteria <br><br>
+                Now that you have a rough idea of your borrowing potential, <a href="tel:+447985901459" style="color: #378bff;">call us</a> for free advice from an expert who can provide accurate calculations based on your particular circumstances
+            `;
+            document.getElementById('explanation').innerHTML = explanation;
+
+            // Show explanation only if there is input
+            if (totalMortgage > 0 || deposit > 0) {
+                document.getElementById('explanation').style.display = 'block';
+            } else {
+                document.getElementById('explanation').style.display = 'none';
+            }
+        }
+
+        function calculateApplicantMortgage(applicant) {
+            let status = document.getElementById(applicant + '_status').value;
+            let mortgage = 0;
+
+            if (status === 'employed') {
+                let income = parseFloat(document.getElementById(applicant + '_income').value) || 0;
+                let bonus = parseFloat(document.getElementById(applicant + '_bonus').value) || 0;
+                let overtime = parseFloat(document.getElementById(applicant + '_overtime').value) || 0;
+                let commission = parseFloat(document.getElementById(applicant + '_commission').value) || 0;
+
+                mortgage = (income + bonus + overtime + commission) * 4.5;
+            } else if (status === 'self-employed') {
+                let style = document.getElementById(applicant + '_trading_style').value;
+
+                if (style === 'company_director') {
+                    let latestSalary = parseFloat(document.getElementById(applicant + '_latest_salary').value) || 0;
+                    let previousSalary = parseFloat(document.getElementById(applicant + '_previous_salary').value) || 0;
+
+                    // New logic: Disregard previous year if latest year is less, only multiply latest year by 4.5
+                    if (latestSalary < previousSalary) {
+                       mortgage = latestSalary * 4.5;
+                    } else if (previousSalary > 0) {
+                       mortgage = (latestSalary + previousSalary) / 2 * 4.5;
+                    } else {
+                       mortgage = latestSalary * 4.5;
+                    }
+
+                    // Always multiply latestSalary by 4.5, even if previousSalary is empty
+                    if (previousSalary > 0) {
+                    } else {
+                        mortgage = latestSalary * 4.5; // Multiply latestSalary by 4.5 even if previous is empty
+                    }
+                } else if (style === 'contractor') {
+                    let dayRate = parseFloat(document.getElementById(applicant + '_day_rate').value) || 0;
+                    let daysPerWeek = parseFloat(document.getElementById(applicant + '_days_per_week').value) || 0;
+
+                    mortgage = dayRate * daysPerWeek * 46 * 4.5; // Changed 52 to 46
+                } else if (style === 'partner' || style === 'sole_trader') {
+                    let latestProfit = parseFloat(document.getElementById(applicant + '_latest_profit').value) || 0;
+                    let previousProfit = parseFloat(document.getElementById(applicant + '_previous_profit').value) || 0;
+
+                    if (latestProfit < previousProfit) {
+                        mortgage = latestProfit * 4.5;
+                    } else if (previousProfit > 0) {
+                        let avg = (latestProfit + previousProfit) / 2;
+                        mortgage = avg * 4.5;
+                    } else {
+                        mortgage = latestProfit * 4.5;
+                    }
+                }
+            }
+            return mortgage;
+        }
+    </script>
+</head>
+<body>
+    <div class="calculator-container">
+        <h1>How much can I borrow?</h1>
+        <div class="container">
+            <div class="applicant">
+                <h3>Applicant 1</h3>
+                <label for="applicant1_status">Employment Status:</label>
+                <select id="applicant1_status" onchange="showFields('applicant1', this.value); calculateMortgage();">
+                    <option value="">Select</option>
+                    <option value="employed">Employed</option>
+                    <option value="self-employed">Self-Employed</option>
+                </select>
+                <div id="applicant1_fields"></div>
+            </div>
+            <div class="applicant">
+                <h3>Applicant 2 (if applicable)</h3>
+                <label for="applicant2_status">Employment Status:</label>
+                <select id="applicant2_status" onchange="showFields('applicant2', this.value); calculateMortgage();">
+                    <option value="">Select</option>
+                    <option value="employed">Employed</option>
+                    <option value="self-employed">Self-Employed</option>
+                </select>
+                <div id="applicant2_fields"></div>
+            </div>
+        </div>
+        <div class="deposit">
+            <label for="deposit">Deposit (GBP):</label>
+            <input type="number" id="deposit" oninput="calculateMortgage()" />
+        </div>
+        <div class="result" id="total_mortgage">Total Mortgage: 0 GBP</div>
+        <div class="property-value" id="property_value">You could buy a property worth up to 0 GBP</div>
+        <div class="explanation" id="explanation">
+            Most lenders would consider letting you borrow 0 GBP. However, this figure is just an <b>approximation.</b> The actual amount you are able to borrow could be higher or lower, subject to the lender’s criteria <br><br>
+            Now that you have a rough idea of your borrowing potential, <a href="tel:+447985901459" style="color: #378bff;">call us</a> for free advice from an expert who can provide accurate calculations based on your particular circumstances
+        </div>
+    </div>
+</body>
+</html>
+
